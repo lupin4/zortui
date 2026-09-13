@@ -212,9 +212,21 @@ and nowhere else, so capability detection needs you to pass it —
 `.terminal = .{ .env = .fromEnviron(&init.minimal.environ) }`. Skip it and every
 terminal is detected as a dumb one.
 
-Windows has no POSIX terminal layer here, so the interactive `App` does not run
-there — but everything above it (the framebuffer, widgets, encoder and headless
-renderer) is pure computation and works fine.
+On **Windows** the same contract goes through the console API, and the
+interactive `App` runs there in any console that accepts VT processing
+(Windows 10 and later). The console is switched into VT mode in both directions —
+`ENABLE_VIRTUAL_TERMINAL_PROCESSING` out, `ENABLE_VIRTUAL_TERMINAL_INPUT` in,
+UTF-8 code pages both ways — so the escape sequences written and the bytes read
+back are the ones a Unix tty carries, and the encoder and input parser are
+shared unchanged. Both console modes and both code pages are saved on entry and
+handed back on exit, on Ctrl+Break, and when the window closes.
+
+Waiting for input is the one real difference. A console input handle also
+wakes for focus, menu and key-release records, and a read after such a wake
+blocks until a character comes, so those records are drained before a wake
+counts as input. A console that accepts VT processing is detected as a
+truecolor, Unicode terminal; `NO_COLOR`, `FORCE_COLOR` and the capability
+overrides still win.
 
 ## License
 
