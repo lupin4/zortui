@@ -37,6 +37,7 @@
 //!   frame that drew the button has been torn down.
 
 const std = @import("std");
+const builtin = @import("builtin");
 
 const ansi = @import("ansi.zig");
 const buffer_mod = @import("buffer.zig");
@@ -440,7 +441,11 @@ pub const App = struct {
 /// threading one through every frame for a timestamp is not worth it, so the
 /// syscall is made directly — the two systems spell it identically apart from
 /// the return type.
+///
+/// Windows has no `clock_gettime` without linking libc, which this package
+/// does not do, so there it is the performance counter instead.
 fn monotonicNs() u64 {
+    if (comptime builtin.os.tag == .windows) return @import("win32.zig").monotonicNs();
     var ts: std.posix.timespec = undefined;
     if (std.posix.system.clock_gettime(.MONOTONIC, &ts) != 0) return 0;
     const sec: u64 = @intCast(@max(0, ts.sec));
