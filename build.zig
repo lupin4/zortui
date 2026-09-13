@@ -10,42 +10,23 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    // The conformance suite reads the shared fixtures from the repository, so
-    // the tests need to know where the checkout is. Passing the path as a build
-    // option keeps them free of assumptions about the working directory.
+    // The conformance suite replays fixtures generated from hqtui's TypeScript
+    // reference implementation. They are vendored under conformance/fixtures so
+    // the tests run from a plain checkout of this repository; passing the path
+    // as a build option keeps the tests free of assumptions about the working
+    // directory.
     const options = b.addOptions();
-    options.addOptionPath("fixtures", b.path("../conformance/fixtures"));
-    options.addOptionPath("demo_parity", b.path("../conformance/fixtures/demo-parity.json"));
+    options.addOptionPath("fixtures", b.path("conformance/fixtures"));
     const fixture_options = options.createModule();
 
     const tests = b.addTest(.{ .root_module = hqtui });
     tests.root_module.addImport("build_options", fixture_options);
     const run_tests = b.addRunArtifact(tests);
-    const test_step = b.step("test", "Run the conformance suite and dashboard regression tests");
+    const test_step = b.step("test", "Run the conformance suite and example regression tests");
     test_step.dependOn(&run_tests.step);
 
-    const demo = b.addExecutable(.{
-        .name = "hqtui-demo-zig",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("demo/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{.{ .name = "hqtui", .module = hqtui }},
-        }),
-    });
-    b.installArtifact(demo);
-    const run_demo = b.addRunArtifact(demo);
-    if (b.args) |args| run_demo.addArgs(args);
-    b.step("run-demo", "Run the native ten-screen reference demo").dependOn(&run_demo.step);
-    b.step("run-dashboard", "Run the native ten-screen reference demo").dependOn(&run_demo.step);
-    const demo_tests = b.addTest(.{ .root_module = demo.root_module });
-    demo_tests.root_module.addImport("build_options", fixture_options);
-    const run_demo_tests = b.addRunArtifact(demo_tests);
-    b.step("test-demo", "Run native demo acceptance tests").dependOn(&run_demo_tests.step);
-    b.getInstallStep().dependOn(&demo.step);
-
     // Examples are separate executables, so `zig build run-screenshot` works
-    // without a TTY while `run-dashboard` takes one over.
+    // without a TTY while `run-dashboard-mini` takes one over.
     for ([_][]const u8{ "hello", "dashboard", "screenshot", "widgets", "collapse", "justify_parity", "world-probe" }) |name| {
         const command_name = if (std.mem.eql(u8, name, "dashboard")) "dashboard-mini" else name;
         const exe = b.addExecutable(.{

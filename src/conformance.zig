@@ -4,7 +4,8 @@
 //! A failure here means this port and the reference disagree about something
 //! observable — which is a bug in one of them, never an acceptable difference.
 //!
-//! Regenerate the fixtures with `bun ports/conformance/generate.ts`.
+//! The fixtures are vendored in conformance/fixtures from hqtui, where they are
+//! regenerated with `bun ports/conformance/generate.ts`.
 
 const std = @import("std");
 const build_options = @import("build_options");
