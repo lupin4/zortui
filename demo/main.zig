@@ -98,11 +98,11 @@ fn now(io: std.Io) f64 {
     return @as(f64, @floatFromInt(std.Io.Timestamp.now(io, .awake).nanoseconds)) / 1e9;
 }
 pub fn main(init: std.process.Init) !void {
-    var args = init.minimal.args.iterate();
-    _ = args.skip();
+    // `toSlice`, not `iterate`, which is a compile error on Windows.
+    const argv = try init.minimal.args.toSlice(init.arena.allocator());
     var list: std.ArrayList([]const u8) = .empty;
     defer list.deinit(init.gpa);
-    while (args.next()) |arg| try list.append(init.gpa, arg);
+    for (argv[@min(1, argv.len)..]) |arg| try list.append(init.gpa, arg);
     const o = options(list.items) catch |err| {
         try std.Io.File.stderr().writeStreamingAll(init.io, try std.fmt.allocPrint(init.arena.allocator(), "{s}: invalid demo options. Use --help.\n", .{@errorName(err)}));
         std.process.exit(2);

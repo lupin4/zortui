@@ -103,9 +103,11 @@ const Scene = struct {
 pub fn main(init: std.process.Init) !void {
     const allocator = init.gpa;
 
-    var args = init.minimal.args.iterate();
-    _ = args.skip();
-    const mode = args.next() orelse "";
+    // `toSlice` rather than `iterate`: on Windows the command line is one
+    // UTF-16 string that has to be split into an allocation, and `iterate` is a
+    // compile error there.
+    const args = try init.minimal.args.toSlice(init.arena.allocator());
+    const mode: []const u8 = if (args.len > 1) args[1] else "";
 
     var scene = Scene.init();
     var screen = try hqtui.renderToScreen(allocator, 84, 22, "dark", Body.with(&scene, Scene.view));
