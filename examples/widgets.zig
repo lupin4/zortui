@@ -1,17 +1,17 @@
-//! Every widget HQTUI ships, one function each, in Zig.
+//! Every widget zortui ships, one function each, in Zig.
 //!
 //! `zig build run-widgets` renders all of them headlessly and prints the
 //! result, so the file is a program rather than a snippet dump. The
-//! `@widget` / `@end` markers are what hqtui.com/widgets slices to show the
+//! `@widget` / `@end` markers are what zortui.com/widgets slices to show the
 //! code for one widget, which is why a snippet on the site is always a region
 //! of something that compiles.
 //!
 //! Keep each function self-contained: it takes a container and nothing else.
 
 const std = @import("std");
-const hqtui = @import("hqtui");
+const zortui = @import("zortui");
 
-const Container = hqtui.Container;
+const Container = zortui.Container;
 
 const cpu_history = [_]f64{ 12, 18, 26, 22, 31, 44, 38, 52, 61, 48, 39, 44, 57, 66, 72, 64, 51, 43, 37, 41 };
 const net_history = [_]f64{ 4, 9, 6, 14, 22, 18, 31, 27, 19, 12, 8, 15, 24, 33, 29, 21 };
@@ -52,7 +52,7 @@ fn heading(ui: *Container) anyerror!void {
 
 // @widget badge
 fn badge(ui: *Container) anyerror!void {
-    try ui.row(.{ .layout = .{ .size = .{ .cells = 1 }, .gap = 1 } }, hqtui.Body.plain(badgeRow));
+    try ui.row(.{ .layout = .{ .size = .{ .cells = 1 }, .gap = 1 } }, zortui.Body.plain(badgeRow));
 }
 
 fn badgeRow(r: *Container) anyerror!void {
@@ -175,7 +175,7 @@ fn log(ui: *Container) anyerror!void {
 fn scrollbar(ui: *Container) anyerror!void {
     // The bar is over state you own, so it works beside anything that scrolls:
     // wrapped prose, a canvas, a `draw` of your own.
-    try ui.row(.{ .layout = .{ .gap = 1 } }, hqtui.Body.plain(scrollbarRow));
+    try ui.row(.{ .layout = .{ .gap = 1 } }, zortui.Body.plain(scrollbarRow));
 }
 
 fn scrollbarRow(r: *Container) anyerror!void {
@@ -306,7 +306,7 @@ fn donut(ui: *Container) anyerror!void {
 // @widget button
 fn button(ui: *Container) anyerror!void {
     // The id is how you ask whether it was pressed: `app.pressed("run")`.
-    try ui.row(.{ .layout = .{ .size = .{ .cells = 1 }, .gap = 1 } }, hqtui.Body.plain(buttonRow));
+    try ui.row(.{ .layout = .{ .size = .{ .cells = 1 }, .gap = 1 } }, zortui.Body.plain(buttonRow));
 }
 
 fn buttonRow(r: *Container) anyerror!void {
@@ -319,7 +319,7 @@ fn buttonRow(r: *Container) anyerror!void {
 
 // @widget checkbox
 fn checkbox(ui: *Container) anyerror!void {
-    try ui.row(.{ .layout = .{ .size = .{ .cells = 1 }, .gap = 2 } }, hqtui.Body.plain(checkboxRow));
+    try ui.row(.{ .layout = .{ .size = .{ .cells = 1 }, .gap = 2 } }, zortui.Body.plain(checkboxRow));
 }
 
 fn checkboxRow(r: *Container) anyerror!void {
@@ -394,40 +394,40 @@ fn tooltip(ui: *Container) anyerror!void {
 }
 // @end
 
-const Example = struct { name: []const u8, body: hqtui.Body };
+const Example = struct { name: []const u8, body: zortui.Body };
 
 const examples = [_]Example{
-    .{ .name = "text", .body = hqtui.Body.plain(text) },
-    .{ .name = "label", .body = hqtui.Body.plain(label) },
-    .{ .name = "heading", .body = hqtui.Body.plain(heading) },
-    .{ .name = "badge", .body = hqtui.Body.plain(badge) },
-    .{ .name = "divider", .body = hqtui.Body.plain(divider) },
-    .{ .name = "keyValues", .body = hqtui.Body.plain(keyValues) },
-    .{ .name = "statusBar", .body = hqtui.Body.plain(statusBar) },
-    .{ .name = "table", .body = hqtui.Body.plain(table) },
-    .{ .name = "list", .body = hqtui.Body.plain(list) },
-    .{ .name = "tree", .body = hqtui.Body.plain(tree) },
-    .{ .name = "log", .body = hqtui.Body.plain(log) },
-    .{ .name = "scrollbar", .body = hqtui.Body.plain(scrollbar) },
-    .{ .name = "chart", .body = hqtui.Body.plain(chart) },
-    .{ .name = "calendar", .body = hqtui.Body.plain(calendar) },
-    .{ .name = "meter", .body = hqtui.Body.plain(meter) },
-    .{ .name = "meters", .body = hqtui.Body.plain(meters) },
-    .{ .name = "progress", .body = hqtui.Body.plain(progress) },
-    .{ .name = "graph", .body = hqtui.Body.plain(graph) },
-    .{ .name = "sparkline", .body = hqtui.Body.plain(sparkline) },
-    .{ .name = "histogram", .body = hqtui.Body.plain(histogram) },
-    .{ .name = "heatBar", .body = hqtui.Body.plain(heatBar) },
-    .{ .name = "gauge", .body = hqtui.Body.plain(gauge) },
-    .{ .name = "donut", .body = hqtui.Body.plain(donut) },
-    .{ .name = "button", .body = hqtui.Body.plain(button) },
-    .{ .name = "checkbox", .body = hqtui.Body.plain(checkbox) },
-    .{ .name = "select", .body = hqtui.Body.plain(select) },
-    .{ .name = "textInput", .body = hqtui.Body.plain(textInput) },
-    .{ .name = "tabs", .body = hqtui.Body.plain(tabs) },
-    .{ .name = "modal", .body = hqtui.Body.plain(modal) },
-    .{ .name = "commandPalette", .body = hqtui.Body.plain(commandPalette) },
-    .{ .name = "tooltip", .body = hqtui.Body.plain(tooltip) },
+    .{ .name = "text", .body = zortui.Body.plain(text) },
+    .{ .name = "label", .body = zortui.Body.plain(label) },
+    .{ .name = "heading", .body = zortui.Body.plain(heading) },
+    .{ .name = "badge", .body = zortui.Body.plain(badge) },
+    .{ .name = "divider", .body = zortui.Body.plain(divider) },
+    .{ .name = "keyValues", .body = zortui.Body.plain(keyValues) },
+    .{ .name = "statusBar", .body = zortui.Body.plain(statusBar) },
+    .{ .name = "table", .body = zortui.Body.plain(table) },
+    .{ .name = "list", .body = zortui.Body.plain(list) },
+    .{ .name = "tree", .body = zortui.Body.plain(tree) },
+    .{ .name = "log", .body = zortui.Body.plain(log) },
+    .{ .name = "scrollbar", .body = zortui.Body.plain(scrollbar) },
+    .{ .name = "chart", .body = zortui.Body.plain(chart) },
+    .{ .name = "calendar", .body = zortui.Body.plain(calendar) },
+    .{ .name = "meter", .body = zortui.Body.plain(meter) },
+    .{ .name = "meters", .body = zortui.Body.plain(meters) },
+    .{ .name = "progress", .body = zortui.Body.plain(progress) },
+    .{ .name = "graph", .body = zortui.Body.plain(graph) },
+    .{ .name = "sparkline", .body = zortui.Body.plain(sparkline) },
+    .{ .name = "histogram", .body = zortui.Body.plain(histogram) },
+    .{ .name = "heatBar", .body = zortui.Body.plain(heatBar) },
+    .{ .name = "gauge", .body = zortui.Body.plain(gauge) },
+    .{ .name = "donut", .body = zortui.Body.plain(donut) },
+    .{ .name = "button", .body = zortui.Body.plain(button) },
+    .{ .name = "checkbox", .body = zortui.Body.plain(checkbox) },
+    .{ .name = "select", .body = zortui.Body.plain(select) },
+    .{ .name = "textInput", .body = zortui.Body.plain(textInput) },
+    .{ .name = "tabs", .body = zortui.Body.plain(tabs) },
+    .{ .name = "modal", .body = zortui.Body.plain(modal) },
+    .{ .name = "commandPalette", .body = zortui.Body.plain(commandPalette) },
+    .{ .name = "tooltip", .body = zortui.Body.plain(tooltip) },
 };
 
 /// Renders each widget on its own small screen and prints the lot.
@@ -438,7 +438,7 @@ pub fn main(init: std.process.Init) !void {
 
     var blank: usize = 0;
     for (examples) |example| {
-        const rendered = try hqtui.testing.renderToText(allocator, 62, 12, "dark", example.body);
+        const rendered = try zortui.testing.renderToText(allocator, 62, 12, "dark", example.body);
         defer allocator.free(rendered);
         if (std.mem.trim(u8, rendered, " \n").len == 0) {
             const line = try std.fmt.allocPrint(

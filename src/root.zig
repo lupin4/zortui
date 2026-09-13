@@ -1,10 +1,10 @@
-//! HQTUI — High Quality Terminal UI for Zig.
+//! zortui — terminal UI for Zig, derived from hqtui's Zig port (see NOTICE).
 //!
 //! ```zig
-//! const hqtui = @import("hqtui");
+//! const zortui = @import("zortui");
 //!
 //! pub fn main() !void {
-//!     var app = try hqtui.App.init(allocator, .{});
+//!     var app = try zortui.App.init(allocator, .{});
 //!     defer app.deinit();
 //!     try app.run(view);
 //! }

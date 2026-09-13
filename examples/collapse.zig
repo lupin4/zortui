@@ -5,24 +5,24 @@
 //! expected to be byte for byte the same, which is what keeps the ports honest.
 
 const std = @import("std");
-const hqtui = @import("hqtui");
+const zortui = @import("zortui");
 
-const Container = hqtui.Container;
+const Container = zortui.Container;
 
 fn view(ui: *Container) anyerror!void {
-    try ui.row(.{ .layout = .{ .size = .{ .cells = 5 } } }, hqtui.Body.plain(top));
-    try ui.row(.{ .layout = .{ .size = .{ .cells = 4 } } }, hqtui.Body.plain(bottom));
+    try ui.row(.{ .layout = .{ .size = .{ .cells = 5 } } }, zortui.Body.plain(top));
+    try ui.row(.{ .layout = .{ .size = .{ .cells = 4 } } }, zortui.Body.plain(bottom));
 }
 
 fn top(row: *Container) anyerror!void {
-    try row.panel(.{ .title = "CPU" }, hqtui.Body.plain(cpu));
-    try row.panel(.{ .title = "Memory" }, hqtui.Body.plain(memory));
-    try row.panel(.{ .title = "Disk" }, hqtui.Body.plain(disk));
+    try row.panel(.{ .title = "CPU" }, zortui.Body.plain(cpu));
+    try row.panel(.{ .title = "Memory" }, zortui.Body.plain(memory));
+    try row.panel(.{ .title = "Disk" }, zortui.Body.plain(disk));
 }
 
 fn bottom(row: *Container) anyerror!void {
-    try row.panel(.{ .title = "Network" }, hqtui.Body.plain(network));
-    try row.panel(.{ .title = "Errors" }, hqtui.Body.plain(errors));
+    try row.panel(.{ .title = "Network" }, zortui.Body.plain(network));
+    try row.panel(.{ .title = "Errors" }, zortui.Body.plain(errors));
 }
 
 fn cpu(p: *Container) anyerror!void {
@@ -51,9 +51,9 @@ pub fn main(init: std.process.Init) !void {
     const allocator = init.gpa;
     const stdout = std.Io.File.stdout();
 
-    const plain = try hqtui.testing.renderToText(allocator, 60, 9, "dark", hqtui.Body.plain(view));
+    const plain = try zortui.testing.renderToText(allocator, 60, 9, "dark", zortui.Body.plain(view));
     defer allocator.free(plain);
-    const merged = try hqtui.testing.renderCollapsedToText(allocator, 60, 9, "dark", hqtui.Body.plain(view));
+    const merged = try zortui.testing.renderCollapsedToText(allocator, 60, 9, "dark", zortui.Body.plain(view));
     defer allocator.free(merged);
 
     const out = try std.fmt.allocPrint(

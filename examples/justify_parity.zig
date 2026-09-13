@@ -1,7 +1,7 @@
 //! Print the justify distribution for a matrix of inputs, so the ports can be
 //! diffed against the TypeScript reference rather than assumed to agree.
 const std = @import("std");
-const hqtui = @import("hqtui");
+const zortui = @import("zortui");
 
 pub fn main(init: std.process.Init) !void {
     const allocator = init.gpa;
@@ -12,12 +12,12 @@ pub fn main(init: std.process.Init) !void {
 
     const names = [_][]const u8{ "start", "end", "center", "space-between", "space-around", "space-evenly" };
     for (names) |name| {
-        const j = hqtui.layout.Justify.parse(name);
+        const j = zortui.layout.Justify.parse(name);
         var count: usize = 1;
         while (count <= 5) : (count += 1) {
             var slack: usize = 0;
             while (slack <= 12) : (slack += 1) {
-                const spread = try hqtui.layout.distribute(allocator, slack, count, j);
+                const spread = try zortui.layout.distribute(allocator, slack, count, j);
                 defer allocator.free(spread.seams);
 
                 var seams: std.ArrayListUnmanaged(u8) = .empty;

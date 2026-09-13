@@ -1,13 +1,13 @@
 //! The smallest real app: `zig build run-hello`. Press q to quit.
 
 const std = @import("std");
-const hqtui = @import("hqtui");
+const zortui = @import("zortui");
 
-fn view(ui: *hqtui.Container) anyerror!void {
-    try ui.panel(.{ .title = "Hello" }, hqtui.Body.plain(body));
+fn view(ui: *zortui.Container) anyerror!void {
+    try ui.panel(.{ .title = "Hello" }, zortui.Body.plain(body));
 }
 
-fn body(p: *hqtui.Container) anyerror!void {
+fn body(p: *zortui.Container) anyerror!void {
     try p.text("Hello, terminal.", .{});
     try p.label("Press q to quit.");
 }
@@ -16,10 +16,10 @@ fn body(p: *hqtui.Container) anyerror!void {
 // global, and capability detection needs it — without it every terminal looks
 // like a dumb one.
 pub fn main(init: std.process.Init) !void {
-    var app = try hqtui.App.init(init.gpa, .{
+    var app = try zortui.App.init(init.gpa, .{
         .terminal = .{ .env = .fromEnviron(&init.minimal.environ) },
     });
     defer app.deinit();
 
-    try app.run(hqtui.Body.plain(view));
+    try app.run(zortui.Body.plain(view));
 }

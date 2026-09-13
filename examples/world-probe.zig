@@ -3,10 +3,10 @@
 //! The same probe exists for every port, so "the ports agree about the world" is
 //! a diff rather than a hope.
 const std = @import("std");
-const hqtui = @import("hqtui");
+const zortui = @import("zortui");
 
-const world = hqtui.graphics.world;
-const widgets = hqtui.widgets;
+const world = zortui.graphics.world;
+const widgets = zortui.widgets;
 
 pub fn main(init: std.process.Init) !void {
     const stdout = std.Io.File.stdout();

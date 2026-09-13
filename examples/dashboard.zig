@@ -6,12 +6,12 @@
 //! hands it back its own pointer.
 
 const std = @import("std");
-const hqtui = @import("hqtui");
+const zortui = @import("zortui");
 
-const Body = hqtui.Body;
-const Container = hqtui.Container;
-const Grid = hqtui.Grid;
-const GridBody = hqtui.GridBody;
+const Body = zortui.Body;
+const Container = zortui.Container;
+const Grid = zortui.Grid;
+const GridBody = zortui.GridBody;
 
 const tabs = [_][]const u8{ "cpu", "net", "procs" };
 
@@ -75,7 +75,7 @@ const State = struct {
         }, GridBody.with(self, cells));
         // Drawing happens after view returns; a runtime array literal would
         // leave the status bar pointing into this function's expired stack.
-        const right = try ui.ctx.allocator.alloc(hqtui.widgets.StatusItem, 1);
+        const right = try ui.ctx.allocator.alloc(zortui.widgets.StatusItem, 1);
         right[0] = .{ .label = self.size };
         try ui.statusBar(.{
             .items = &.{
@@ -88,7 +88,7 @@ const State = struct {
     }
 
     fn header(r: *Container) anyerror!void {
-        try r.heading("hqtui — zig");
+        try r.heading("zortui — zig");
         try r.spacer(.fill);
         try r.badge(.{ .text = "LIVE" });
     }
@@ -112,7 +112,7 @@ const State = struct {
         const scaled = try p.ctx.allocator.alloc(f64, cpu_seen.len);
         for (cpu_seen, 0..) |v, i| scaled[i] = v * 100.0;
 
-        const series = try p.ctx.allocator.alloc(hqtui.graphics.Series, 2);
+        const series = try p.ctx.allocator.alloc(zortui.graphics.Series, 2);
         series[0] = .{ .values = scaled, .label = "cpu" };
         series[1] = .{ .values = self.window(&self.net), .label = "net" };
         try p.graph(.{
@@ -124,7 +124,7 @@ const State = struct {
     }
 
     fn processes(self: *State, p: *Container) anyerror!void {
-        const rows = try p.ctx.allocator.alloc(hqtui.widgets.TableRow, self.rows.len);
+        const rows = try p.ctx.allocator.alloc(zortui.widgets.TableRow, self.rows.len);
         for (self.rows, 0..) |proc, i| {
             const cell = try p.ctx.allocator.alloc([]const u8, 3);
             cell[0] = try p.fmt("{d}", .{proc.pid});
@@ -150,14 +150,14 @@ const State = struct {
 test "dashboard retains dynamic status items until the frame is drawn" {
     var state: State = .{ .size = "100x30" };
     state.tick();
-    var screen = try hqtui.renderToScreen(std.testing.allocator, 100, 30, "dark", Body.with(&state, State.view));
+    var screen = try zortui.renderToScreen(std.testing.allocator, 100, 30, "dark", Body.with(&state, State.view));
     defer screen.deinit();
     try std.testing.expect(screen.contains("100x30"));
     try std.testing.expect(screen.contains("Processes"));
 }
 
 pub fn main(init: std.process.Init) !void {
-    var app = try hqtui.App.init(init.gpa, .{
+    var app = try zortui.App.init(init.gpa, .{
         .terminal = .{ .env = .fromEnviron(&init.minimal.environ) },
     });
     defer app.deinit();

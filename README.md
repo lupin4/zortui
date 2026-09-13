@@ -1,63 +1,43 @@
-# hqtui — Zig
+# zortui
 
-Fetch latest main and run the full demo (from any directory):
+Terminal UI for Zig: btop-grade dashboards with a one-import API, dark by
+default, **standard library only** — no package dependencies, nothing in
+`build.zig.zon` to fetch. Runs on Linux, macOS and Windows (any console that
+accepts VT processing).
 
-```sh
-# Vanilla: installed toolchain
-curl -fsSL https://hqtui.com/demo.sh | sh -s -- --system zig
-# Mise: pinned toolchain
-curl -fsSL https://hqtui.com/demo.sh | sh -s -- --mise zig
-```
+zortui is our own copy of the Zig port of
+[hqtui](https://github.com/profullstack/hqtui), maintained independently — see
+`NOTICE`. It keeps hqtui's API and replays hqtui's conformance fixtures, so
+rendering matches hqtui's reference implementation as of the copy.
 
-Both update a private cache before running, print the exact commit, and leave
-your checkout alone. Append `--sim` or `--snapshot` directly. Review the
-[launcher](https://hqtui.com/demo.sh) before executing it. In an updated checkout,
-`mise run demo:zig` also updates; `mise run demo-local:zig` and the
-direct example commands below run local source without updating.
-
-High Quality Terminal UI for Zig. btop-grade dashboards with a one-import API,
-dark by default, **standard library only** — no package dependencies, nothing in
-`build.zig.zon` to fetch.
-
-This is a native port of [the TypeScript reference
-implementation](https://hqtui.com), not a binding. There is no Node in the
-picture at runtime or at build time.
-
-Requires Zig 0.16. Not in any package index yet — it ships in the monorepo. To
-run it now:
+Requires Zig 0.16.
 
 ```bash
-git clone https://github.com/profullstack/hqtui
-cd hqtui/ports/zig && zig build run-dashboard
-```
-
-To depend on it from your own build, fetch the checkout:
-
-```bash
-zig fetch --save=hqtui /path/to/hqtui/ports/zig
+git clone https://github.com/lupin4/zortui
+cd zortui && zig build test
 ```
 
 ## Hello, terminal
 
 ```zig
 const std = @import("std");
-const hqtui = @import("hqtui");
+const zortui = @import("zortui");
 
-fn view(ui: *hqtui.Container) anyerror!void {
-    try ui.panel(.{ .title = "Hello" }, hqtui.Body.plain(body));
+fn view(ui: *zortui.Container) anyerror!void {
+    try ui.panel(.{ .title = "Hello" }, zortui.Body.plain(body));
 }
 
-fn body(p: *hqtui.Container) anyerror!void {
+fn body(p: *zortui.Container) anyerror!void {
     try p.text("Hello, terminal.", .{});
     try p.label("Press q to quit.");
 }
 
 pub fn main(init: std.process.Init) !void {
-    var app = try hqtui.App.init(init.gpa, .{
+    var app = try zortui.App.init(init.gpa, .{
         .terminal = .{ .env = .fromEnviron(&init.minimal.environ) },
     });
     defer app.deinit();
-    try app.run(hqtui.Body.plain(view));
+    try app.run(zortui.Body.plain(view));
 }
 ```
 
@@ -69,11 +49,10 @@ dies.
 Run the examples:
 
 ```bash
-zig build run-hello        # the smallest app
-zig build run-dashboard    # full native ten-screen demo
-zig build run-dashboard -- --sim # generated sample telemetry
-zig build run-dashboard-mini     # small library example
-zig build run-screenshot   # renders to stdout, no TTY needed
+zig build run-hello              # the smallest app
+zig build run-dashboard-mini     # a small dashboard
+zig build run-widgets            # every widget
+zig build run-screenshot         # renders to stdout, no TTY needed
 zig build run-screenshot -- --html   # a standalone HTML page
 ```
 
@@ -93,11 +72,11 @@ const State = struct {
     selected: usize = 0,
     rows: []const Process,
 
-    fn view(self: *State, ui: *hqtui.Container) anyerror!void {
-        try ui.panel(.{ .title = "Processes" }, hqtui.Body.with(self, table));
+    fn view(self: *State, ui: *zortui.Container) anyerror!void {
+        try ui.panel(.{ .title = "Processes" }, zortui.Body.with(self, table));
     }
 
-    fn table(self: *State, p: *hqtui.Container) anyerror!void {
+    fn table(self: *State, p: *zortui.Container) anyerror!void {
         try p.table(.{ .rows = self.buildRows(p), .selected = self.selected }, "procs");
     }
 };
@@ -111,7 +90,7 @@ while (app.running()) {
     if (app.clickedRow("procs")) |row| state.selected = row;
     state.selected +|= @intCast(@max(0, app.scrolled("procs")));
 
-    _ = try app.draw(hqtui.Body.with(&state, State.view));
+    _ = try app.draw(zortui.Body.with(&state, State.view));
 }
 ```
 
@@ -139,7 +118,7 @@ Two arenas make that safe:
 ## Testing without a terminal
 
 ```zig
-var screen = try hqtui.renderToScreen(allocator, 80, 24, "dark", Body.plain(view));
+var screen = try zortui.renderToScreen(allocator, 80, 24, "dark", Body.plain(view));
 defer screen.deinit();
 try std.testing.expect(screen.contains("72%"));
 ```
@@ -151,12 +130,12 @@ The returned screen owns one arena, so a test frees one thing.
 
 ## How this stays honest
 
-Every port replays a shared corpus of fixtures generated from the TypeScript
-implementation: the same widget arguments must produce the same cells, the same
+zortui replays the corpus of fixtures hqtui generates from its TypeScript
+implementation (vendored in `conformance/fixtures`): the same widget arguments must produce the same cells, the same
 colors and the same escape bytes.
 
 ```bash
-zig build test         # 13 conformance groups, ~9k reference cells
+zig build test         # conformance suite + example regression tests
 ```
 
 That covers colors and all 256 palette quantizations, Unicode widths and
@@ -230,4 +209,4 @@ overrides still win.
 
 ## License
 
-MIT.
+MIT — see `LICENSE` and `NOTICE`.

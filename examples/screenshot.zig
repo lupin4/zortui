@@ -4,12 +4,12 @@
 //! Add `-- --ansi` for the colored form, or `-- --html` for a standalone page.
 
 const std = @import("std");
-const hqtui = @import("hqtui");
+const zortui = @import("zortui");
 
-const Body = hqtui.Body;
-const Container = hqtui.Container;
-const GridBody = hqtui.GridBody;
-const Grid = hqtui.Grid;
+const Body = zortui.Body;
+const Container = zortui.Container;
+const GridBody = zortui.GridBody;
+const Grid = zortui.Grid;
 
 const Scene = struct {
     cpu: [120]f64,
@@ -42,7 +42,7 @@ const Scene = struct {
     }
 
     fn header(r: *Container) anyerror!void {
-        try r.heading("hqtui — zig port");
+        try r.heading("zortui — zig");
         try r.spacer(.fill);
         try r.badge(.{ .text = "LIVE" });
     }
@@ -61,7 +61,7 @@ const Scene = struct {
         // The series array outlives the frame because it is built in the arena,
         // not on this stack: a child draws after the function declaring it has
         // returned.
-        const series = try p.ctx.allocator.alloc(hqtui.graphics.Series, 2);
+        const series = try p.ctx.allocator.alloc(zortui.graphics.Series, 2);
         series[0] = .{ .values = &self.cpu, .label = "cpu" };
         series[1] = .{ .values = &self.net, .label = "net" };
         try p.graph(.{
@@ -73,7 +73,7 @@ const Scene = struct {
     }
 
     fn cores(_: *Scene, p: *Container) anyerror!void {
-        const items = try p.ctx.allocator.alloc(hqtui.widgets.MeterItem, 8);
+        const items = try p.ctx.allocator.alloc(zortui.widgets.MeterItem, 8);
         for (items, 0..) |*item, i| {
             const n: f64 = @floatFromInt(i);
             item.* = .{ .label = try p.fmt("c{d}", .{i}), .value = 0.15 + n * 0.11 };
@@ -110,13 +110,13 @@ pub fn main(init: std.process.Init) !void {
     const mode: []const u8 = if (args.len > 1) args[1] else "";
 
     var scene = Scene.init();
-    var screen = try hqtui.renderToScreen(allocator, 84, 22, "dark", Body.with(&scene, Scene.view));
+    var screen = try zortui.renderToScreen(allocator, 84, 22, "dark", Body.with(&scene, Scene.view));
     defer screen.deinit();
 
     const out = if (std.mem.eql(u8, mode, "--ansi"))
         try screen.ansi()
     else if (std.mem.eql(u8, mode, "--html"))
-        try hqtui.testing.renderToHtml(screen.allocator(), screen, .{})
+        try zortui.testing.renderToHtml(screen.allocator(), screen, .{})
     else
         try screen.text();
 

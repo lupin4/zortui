@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const hqtui = b.addModule("hqtui", .{
+    const zortui = b.addModule("zortui", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
@@ -19,7 +19,7 @@ pub fn build(b: *std.Build) void {
     options.addOptionPath("fixtures", b.path("conformance/fixtures"));
     const fixture_options = options.createModule();
 
-    const tests = b.addTest(.{ .root_module = hqtui });
+    const tests = b.addTest(.{ .root_module = zortui });
     tests.root_module.addImport("build_options", fixture_options);
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run the conformance suite and example regression tests");
@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
                 .root_source_file = b.path(b.fmt("examples/{s}.zig", .{name})),
                 .target = target,
                 .optimize = optimize,
-                .imports = &.{.{ .name = "hqtui", .module = hqtui }},
+                .imports = &.{.{ .name = "zortui", .module = zortui }},
             }),
         });
         b.installArtifact(exe);
