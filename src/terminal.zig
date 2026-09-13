@@ -229,12 +229,16 @@ pub const Terminal = struct {
     waited_ms: u64 = 0,
 
     pub fn init(allocator: std.mem.Allocator, options: Options) Terminal {
+        const tty = isTty();
         return .{
             .allocator = allocator,
-            .capabilities = capabilities_mod.detect(
+            // On Windows `isTty` already means a console that took VT
+            // processing, which is what earns truecolor and Unicode there.
+            .capabilities = capabilities_mod.detectWithConsole(
                 options.capabilities,
                 options.env,
-                isTty(),
+                tty,
+                !is_posix and tty,
             ),
             .options = options,
             .parser = InputParser.init(allocator),

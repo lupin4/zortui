@@ -99,12 +99,74 @@ pub const Env = struct {
             .context = @ptrCast(environ),
             .lookup = struct {
                 fn f(context: *const anyopaque, key: []const u8) ?[]const u8 {
-                    if (builtin.os.tag == .windows) return null;
                     const e: *const std.process.Environ = @ptrCast(@alignCast(context));
+                    if (builtin.os.tag == .windows) return windows_env.lookup(e.*, key);
                     return e.getPosix(key);
                 }
             }.f,
         };
+    }
+};
+
+/// Windows keeps the environment as UTF-16 in the process block, and
+/// `Environ.getWindows` returns a slice of it that is only good until the
+/// environment next changes. `Env` promises UTF-8 that outlives the call —
+/// `detect` holds `TERM` while it asks for a dozen other names — so each value
+/// is converted once and kept here.
+///
+/// The table grows only by distinct (name, value) pairs and detection reads
+/// about twenty names, so a fixed arena is plenty. A value that does not fit
+/// reads as unset, which degrades rather than guesses. Locked the way the
+/// cluster table in `unicode.zig` is, and for the same reason: `std.Io.Mutex`
+/// wants an `Io` handle.
+const windows_env = struct {
+    const Entry = struct { key: []const u8, value: []const u8 };
+
+    var arena: [8192]u8 = undefined;
+    var used: usize = 0;
+    var entries: [64]Entry = undefined;
+    var count: usize = 0;
+    var locked = std.atomic.Value(bool).init(false);
+
+    fn lookup(environ: std.process.Environ, key: []const u8) ?[]const u8 {
+        // WTF-16 never needs more units than WTF-8 has bytes.
+        var key_w: [256:0]u16 = undefined;
+        if (key.len >= key_w.len) return null;
+        const key_len = std.unicode.wtf8ToWtf16Le(&key_w, key) catch return null;
+        key_w[key_len] = 0;
+
+        // Null unless `environ` is the real process block — `Environ.empty`
+        // sees nothing on Windows, exactly as it does on POSIX.
+        const value_w = environ.getWindows(key_w[0..key_len :0]) orelse return null;
+
+        var value_buf: [2048]u8 = undefined;
+        if (std.unicode.calcWtf8Len(value_w) > value_buf.len) return null;
+        const value = value_buf[0..std.unicode.wtf16LeToWtf8(&value_buf, value_w)];
+        return intern(key, value);
+    }
+
+    fn intern(key: []const u8, value: []const u8) ?[]const u8 {
+        while (locked.cmpxchgWeak(false, true, .acquire, .monotonic) != null) {
+            std.atomic.spinLoopHint();
+        }
+        defer locked.store(false, .release);
+
+        for (entries[0..count]) |entry| {
+            if (std.mem.eql(u8, entry.key, key) and std.mem.eql(u8, entry.value, value)) {
+                return entry.value;
+            }
+        }
+        if (count == entries.len or arena.len - used < key.len + value.len) return null;
+
+        const stored_key = arena[used..][0..key.len];
+        @memcpy(stored_key, key);
+        used += key.len;
+        const stored_value = arena[used..][0..value.len];
+        @memcpy(stored_value, value);
+        used += value.len;
+        entries[count] = .{ .key = stored_key, .value = stored_value };
+        count += 1;
+        return stored_value;
     }
 };
 
@@ -139,7 +201,7 @@ pub fn detectProgram(env: Env) []const u8 {
     return "unknown";
 }
 
-fn detectColors(env: Env, tty: bool) ColorDepth {
+fn detectColors(env: Env, tty: bool, vt_console: bool) ColorDepth {
     if (env.has("NO_COLOR")) return .none;
     const force = env.get("FORCE_COLOR");
     if (std.mem.eql(u8, force, "0") or std.mem.eql(u8, force, "false")) return .none;
@@ -163,11 +225,14 @@ fn detectColors(env: Env, tty: bool) ColorDepth {
         }
     }
     if (contains(&truecolor_programs, detectProgram(env))) return .truecolor;
+    // A Windows console with VT processing on renders 24-bit color, and sets
+    // no variable that would say so.
+    if (vt_console) return .truecolor;
     if (std.mem.indexOf(u8, term, "256") != null) return .ansi256;
     return .ansi16;
 }
 
-fn detectUnicode(env: Env) bool {
+fn detectUnicode(env: Env, vt_console: bool) bool {
     // A dumb terminal has no glyph repertoire to speak of. The Linux console is
     // not in that category — its default font draws box and block elements
     // perfectly well — so only Braille is withheld from it, below.
@@ -187,12 +252,24 @@ fn detectUnicode(env: Env) bool {
     if (env.has("WT_SESSION") or env.has("TERM_PROGRAM") or env.has("KITTY_WINDOW_ID")) {
         return true;
     }
+    // `Terminal` switches a VT console to the UTF-8 code page for the session.
+    if (vt_console) return true;
     if (builtin.os.tag == .windows) return env.has("WT_SESSION");
     return locale.len == 0;
 }
 
 pub fn detect(overrides: Overrides, env: Env, is_tty: bool) Capabilities {
+    return detectWithConsole(overrides, env, is_tty, false);
+}
+
+/// `detect`, told whether stdout is a Windows console that accepted VT
+/// processing. Such a console renders truecolor and, once `Terminal` has put
+/// it in the UTF-8 code page, Unicode — but sets no `TERM`, `COLORTERM` or
+/// locale variable that would say so. Explicit signals still win: `NO_COLOR`,
+/// `FORCE_COLOR`, `TERM=dumb` and every override.
+pub fn detectWithConsole(overrides: Overrides, env: Env, is_tty: bool, vt_console: bool) Capabilities {
     const tty = overrides.tty orelse is_tty;
+    const vt = vt_console and tty;
     const term = env.get("TERM");
     const program = detectProgram(env);
     const tmux = env.has("TMUX") or
@@ -201,8 +278,8 @@ pub fn detect(overrides: Overrides, env: Env, is_tty: bool) Capabilities {
     const screen = std.mem.startsWith(u8, term, "screen") and !env.has("TMUX");
     const ssh = env.has("SSH_CLIENT") or env.has("SSH_TTY") or env.has("SSH_CONNECTION");
 
-    const colors = overrides.colors orelse detectColors(env, tty);
-    const uni = overrides.unicode orelse detectUnicode(env);
+    const colors = overrides.colors orelse detectColors(env, tty, vt);
+    const uni = overrides.unicode orelse detectUnicode(env, vt);
 
     return .{
         .tty = tty,
@@ -225,4 +302,61 @@ pub fn detect(overrides: Overrides, env: Env, is_tty: bool) Capabilities {
         .windows = builtin.os.tag == .windows,
         .program = program,
     };
+}
+
+/// An environment holding exactly one variable, for detection tests.
+fn oneVariable(comptime name: []const u8, comptime value: []const u8) Env {
+    return .{
+        .context = undefined,
+        .lookup = struct {
+            fn f(_: *const anyopaque, key: []const u8) ?[]const u8 {
+                return if (std.mem.eql(u8, key, name)) value else null;
+            }
+        }.f,
+    };
+}
+
+test "a VT console is a truecolor Unicode terminal unless told otherwise" {
+    const vt = detectWithConsole(.{}, Env.empty, true, true);
+    try std.testing.expectEqual(ColorDepth.truecolor, vt.colors);
+    try std.testing.expect(vt.true_color);
+    try std.testing.expect(vt.unicode);
+
+    // The same bare environment without VT stays at the conservative default.
+    try std.testing.expectEqual(ColorDepth.ansi16, detectWithConsole(.{}, Env.empty, true, false).colors);
+    // `detect` is the no-console case, so POSIX callers are unaffected.
+    try std.testing.expectEqual(ColorDepth.ansi16, detect(.{}, Env.empty, true).colors);
+
+    // Explicit signals still win over the console.
+    try std.testing.expectEqual(ColorDepth.none, detectWithConsole(.{}, oneVariable("NO_COLOR", "1"), true, true).colors);
+    try std.testing.expectEqual(ColorDepth.ansi256, detectWithConsole(.{}, oneVariable("FORCE_COLOR", "2"), true, true).colors);
+    const dumb = detectWithConsole(.{}, oneVariable("TERM", "dumb"), true, true);
+    try std.testing.expectEqual(ColorDepth.none, dumb.colors);
+    try std.testing.expect(!dumb.unicode);
+    const forced = detectWithConsole(.{ .colors = .ansi16, .unicode = false }, Env.empty, true, true);
+    try std.testing.expectEqual(ColorDepth.ansi16, forced.colors);
+    try std.testing.expect(!forced.unicode);
+
+    // A console that is not the output (tty forced off) claims nothing.
+    try std.testing.expectEqual(ColorDepth.none, detectWithConsole(.{ .tty = false }, Env.empty, true, true).colors);
+}
+
+test "fromEnviron reads the Windows environment" {
+    if (builtin.os.tag != .windows) return error.SkipZigTest;
+
+    const process: std.process.Environ = .{ .block = .global };
+    const env = Env.fromEnviron(&process);
+    // Windows sets OS for every process.
+    try std.testing.expectEqualStrings("Windows_NT", env.get("OS"));
+    // Names are case-insensitive there, as the shells treat them.
+    try std.testing.expectEqualStrings("Windows_NT", env.get("os"));
+    // A value read earlier stays valid after later lookups.
+    const first = env.get("OS");
+    _ = env.get("SystemRoot");
+    try std.testing.expectEqualStrings("Windows_NT", first);
+    try std.testing.expect(!env.has("HQTUI_SURELY_UNSET_VARIABLE"));
+
+    // The empty environment sees nothing, as on POSIX.
+    const nothing = Env.fromEnviron(&std.process.Environ.empty);
+    try std.testing.expect(!nothing.has("OS"));
 }
